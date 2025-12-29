@@ -5,72 +5,72 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Weather Board Pro</title>
+    <title>Weather Board Pro - Rounding Logic</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
     <style>
         :root {
             --bg-color: #000;
             --main-text: #fff;
-            --sub-text: #555;
-            --label-text: #888;
-            --dim-text: #aaa;
+            --sub-text: #777;
+            --label-text: #aaa;
+            --dim-text: #fff; 
             --border-color: #333;
-            --scroll-bar: #222;
+            --parent-bg: #111;
         }
 
         html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-color); color: var(--main-text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; -webkit-user-select: none; user-select: none; }
         #container { display: flex; width: 100%; height: 100%; cursor: pointer; position: relative; }
         
-        #left { flex: 38; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); height: 100%; z-index: 2; background: var(--bg-color); box-sizing: border-box; }
-        #right { flex: 62; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 2vh; box-sizing: border-box; }
-        #right::-webkit-scrollbar { width: 4px; }
-        #right::-webkit-scrollbar-thumb { background: var(--scroll-bar); border-radius: 10px; }
-
-        @media (orientation: portrait) {
-            #left { flex: 100; border-right: none; }
-            #right { display: none; }
-            .section-label { font-size: 5vh !important; } /* スマホ縦持ち時さらに大きく */
-            .clock-display { font-size: 11vh !important; }
-            .icon-display { font-size: 11vh !important; width: 12vh !important; }
-            .temp-display { font-size: 15vh !important; }
-            .current-detail { font-size: 6vh !important; }
-        }
+        #left { flex: 40; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); height: 100%; z-index: 2; background: var(--bg-color); box-sizing: border-box; }
+        #right { flex: 60; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0; box-sizing: border-box; }
+        #right::-webkit-scrollbar { width: 0; }
 
         .weather-section { height: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; padding: 2vh 0; box-sizing: border-box; }
-        
-        /* 日付ラベルの強化 */
-        .section-label { font-size: 3.5vh; color: #fff; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 2vh; text-transform: uppercase; }
-        
+        .section-label { font-size: 4vh; color: #fff; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 2vh; text-transform: uppercase; }
         .top-row { display: flex; align-items: center; justify-content: center; gap: 3vw; margin-bottom: 1vh; }
-        .clock-display { font-size: 8.5vh; color: var(--dim-text); font-weight: 200; font-variant-numeric: tabular-nums; line-height: 1; }
-        
-        .icon-display { font-size: 9vh; width: 14vh; height: 10vh; display: flex; align-items: center; justify-content: center; filter: brightness(1.6); }
-        .h-icon { font-size: 4.2vh; filter: brightness(1.6); display: flex; align-items: center; justify-content: center; }
-
+        .clock-display { font-size: 10vh; color: var(--dim-text); font-weight: 300; font-variant-numeric: tabular-nums; line-height: 1; }
+        .icon-display { font-size: 11vh; width: 15vh; height: 12vh; display: flex; align-items: center; justify-content: center; filter: brightness(1.6); }
         .bottom-row { display: flex; align-items: center; justify-content: center; gap: 4vw; }
-        .temp-display { font-size: 11.5vh; font-weight: bold; line-height: 0.9; font-variant-numeric: tabular-nums; }
+        .temp-display { font-size: 13.5vh; font-weight: bold; line-height: 0.9; font-variant-numeric: tabular-nums; }
+        .temp-max-min { font-size: 8.5vh; font-weight: bold; color: #fff; line-height: 1; font-variant-numeric: tabular-nums; }
+        .temp-divider { width: 100%; height: 2px; background: #444; margin: 6px 0; }
+        .details-group { display: flex; flex-direction: column; justify-content: center; gap: 0.8vh; }
+        .current-detail { display: flex; align-items: baseline; font-size: 5.8vh; font-weight: bold; }
+        .detail-label { font-size: 2vh; color: var(--sub-text); width: 7vh; font-weight: bold; margin-right: 6px; }
+        .num-val { display: inline-block; width: 8.5vh; text-align: right; font-variant-numeric: tabular-nums; }
+        .unit { font-size: 2.8vh; color: var(--label-text); margin-left: 2px; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; border-spacing: 0; }
+        thead { position: sticky; top: 0; background: var(--bg-color); z-index: 10; }
+        th { color: var(--label-text); font-size: 2.5vh; border-bottom: 2px solid #333; height: 8vh; vertical-align: middle; font-weight: bold; text-align: center; }
         
-        /* 明日の最高・最低気温用（フォントサイズ・色を統一） */
-        .temp-stack { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
-        .temp-max-min { font-size: 7.2vh; font-weight: bold; color: #fff; line-height: 1; font-variant-numeric: tabular-nums; }
-        .temp-divider { width: 100%; height: 1px; background: #444; margin: 4px 0; }
+        th:nth-child(1) { width: 24%; } 
+        th:nth-child(2) { width: 18%; } 
+        th:nth-child(3) { width: 18%; } 
+        th:nth-child(4) { width: 15%; } 
+        th:nth-child(5) { width: 15%; } 
+        th:nth-child(6) { width: 10%; } 
 
-        .details-group { display: flex; flex-direction: column; justify-content: center; gap: 0.5vh; }
-        .current-detail { display: flex; align-items: baseline; font-size: 4.8vh; font-weight: bold; }
-        .detail-label { font-size: 1.6vh; color: var(--sub-text); width: 6vh; font-weight: normal; margin-right: 4px; }
-        .num-val { display: inline-block; width: 6.5vh; text-align: right; font-variant-numeric: tabular-nums; }
-        .unit { font-size: 2.2vh; color: var(--label-text); margin-left: 2px; }
+        td { text-align: center; vertical-align: middle; font-variant-numeric: tabular-nums; padding: 0; border-bottom: 1px solid #1a1a1a; }
+        
+        .parent-row { background: var(--parent-bg); border-bottom: 2px solid #333; cursor: pointer; }
+        .parent-row td { font-size: 8vh; height: 23vh; font-weight: 800; }
+        .time-data { text-align: right !important; padding-right: 3vw !important; }
+        
+        .child-row { display: none; background: #000; }
+        .child-row td { font-size: 5vh; height: 12vh; color: #999; }
+        .child-row.show { display: table-row; }
 
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        thead { position: sticky; top: 0; background: var(--bg-color); z-index: 3; }
-        th { color: var(--label-text); font-size: 2.5vh; border-bottom: 2px solid #333; height: 9vh; vertical-align: middle; font-weight: normal; }
-        td { text-align: center; border-bottom: 1px solid #1a1a1a; font-size: 3.5vh; height: 11vh; vertical-align: middle; font-variant-numeric: tabular-nums; }
+        .h-icon { filter: brightness(1.6); display: inline-block; vertical-align: middle; }
+        .parent-row .h-icon { font-size: 11vh; }
+        .child-row .h-icon { font-size: 7vh; }
+        .toggle-icon { font-size: 6vh; color: #444; font-family: monospace; }
 
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        #modal { background: #111; padding: 30px; border: 1px solid #333; border-radius: 16px; width: 340px; }
-        #modal h2 { margin-top: 0; font-size: 16px; color: var(--label-text); text-align: center; letter-spacing: 3px; margin-bottom: 25px; }
+        #modal { background: #111; padding: 30px; border: 1px solid #333; border-radius: 16px; width: 340px; box-sizing: border-box; }
+        #modal h2 { margin-top: 0; font-size: 16px; color: var(--label-text); text-align: center; letter-spacing: 3px; margin-bottom: 25px; font-weight: bold; }
         .input-group { margin: 15px 0; }
-        .input-group label { display: block; font-size: 11px; color: #555; margin-bottom: 6px; }
+        .input-group label { display: block; font-size: 11px; color: #555; margin-bottom: 6px; font-weight: bold; }
         .input-group input { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 12px; box-sizing: border-box; font-size: 16px; border-radius: 8px; outline: none; }
         .btn-row { display: flex; flex-direction: column; gap: 10px; margin-top: 30px; }
         .btn-main-row { display: flex; gap: 10px; }
@@ -78,6 +78,11 @@
         .save-btn { background: #fff; color: #000; }
         .cancel-btn { background: #222; color: #fff; }
         .reset-btn { background: transparent; color: #444; font-size: 11px; text-decoration: underline; margin-top: 5px; }
+
+        @media (orientation: portrait) {
+            #left { flex: 100; border-right: none; }
+            #right { display: none; }
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -116,7 +121,16 @@
     </div>
     <div id="right">
         <table>
-            <thead><tr><th>TIME</th><th>SKY</th><th>TEMP</th><th>RAIN</th><th>HUMI</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>TIME</th>
+                    <th>SKY</th>
+                    <th>TEMP</th>
+                    <th>RAIN</th>
+                    <th>HUMI</th>
+                    <th></th>
+                </tr>
+            </thead>
             <tbody id="forecast-body"></tbody>
         </table>
     </div>
@@ -149,8 +163,18 @@
         updateFreq: 600000
     };
 
-    let sunData = { sunrise: 360, sunset: 1080 };
+    let dailySunData = []; 
     let pressTimer;
+
+    function toggleAccordion(parentIdx) {
+        const children = document.querySelectorAll(`.child-of-${parentIdx}`);
+        const icon = document.getElementById(`btn-${parentIdx}`);
+        const isShowing = children[0].classList.contains('show');
+        children.forEach(c => c.classList.toggle('show'));
+        icon.textContent = isShowing ? '＋' : '－';
+        icon.style.color = isShowing ? '#444' : '#fff';
+    }
+
     const container = document.getElementById('container');
     const rightSide = document.getElementById('right');
 
@@ -160,7 +184,9 @@
             clearTimeout(pressTimer); 
             pressTimer = null; 
             if (e.currentTarget === container && !rightSide.contains(e.target)) {
-                 toggleFullscreen();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen?.() || document.documentElement.webkitRequestFullscreen?.();
+                }
             }
         } 
     };
@@ -170,23 +196,12 @@
     container.addEventListener('mouseup', handleEnd);
     container.addEventListener('touchend', handleEnd);
 
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen?.() || document.documentElement.webkitRequestFullscreen?.();
-        }
-    }
-
     function toggleSettings(show) {
         document.getElementById('overlay').style.display = show ? 'flex' : 'none';
         if(show) {
             document.getElementById('lat-input').value = CONFIG.lat;
             document.getElementById('lon-input').value = CONFIG.lon;
         }
-    }
-
-    function resetToDefault() {
-        document.getElementById('lat-input').value = DEFAULT_LOC.lat;
-        document.getElementById('lon-input').value = DEFAULT_LOC.lon;
     }
 
     function saveSettings() {
@@ -199,81 +214,126 @@
         }
     }
 
-    function isNight(date) {
-        const m = date.getHours() * 60 + date.getMinutes();
-        return m < sunData.sunrise || m > sunData.sunset;
+    function resetToDefault() {
+        document.getElementById('lat-input').value = DEFAULT_LOC.lat;
+        document.getElementById('lon-input').value = DEFAULT_LOC.lon;
     }
 
-    function getIconHTML(code, date) {
-        const night = isNight(date);
+    function isNight(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
+        const sun = dailySunData.find(s => s.date === dateStr);
+        
+        if (!sun) return date.getHours() < 6 || date.getHours() > 18;
+
+        const currentHourInMins = date.getHours() * 60; // 判定したい時間の「00分」時点の数値
+        
+        // 日の出判定
+        if (date.getHours() < 12) {
+            // 日の出が「時:30」より後なら、その「時」はまだ夜。
+            // ちょうど30分なら、後の判定に従う＝夜。
+            return currentHourInMins < (sun.sunrise - 30);
+        } 
+        // 日の入り判定
+        else {
+            // 日の入りが「時:30」より後なら、その「時」はまだ昼。
+            // ちょうど30分なら、後の判定に従う＝昼。
+            return currentHourInMins >= (sun.sunset + 30);
+        }
+    }
+
+    function getIconHTML(code, date, forceDay = false) {
+        const night = forceDay ? false : isNight(date);
         let icon = "wi-cloudy";
-        if (code <= 1) icon = night ? "wi-night-clear" : "wi-day-sunny";
+        if (code === 0) icon = night ? "wi-night-clear" : "wi-day-sunny";
+        else if (code === 1) icon = night ? "wi-night-alt-partly-cloudy" : "wi-day-sunny-overcast";
         else if (code === 2) icon = night ? "wi-night-alt-cloudy" : "wi-day-cloudy";
         else if (code === 3) icon = "wi-cloudy";
-        else if (code >= 45 && code <= 48) icon = night ? "wi-night-fog" : "wi-fog";
-        else if (code >= 51 && code <= 55) icon = night ? "wi-night-alt-showers" : "wi-day-showers";
-        else if (code >= 61 && code <= 65) icon = "wi-rain";
+        else if (code >= 51 && code <= 65) icon = "wi-rain";
         else if (code >= 71 && code <= 77) icon = "wi-snow";
-        else if (code >= 80 && code <= 82) icon = night ? "wi-night-alt-rain" : "wi-day-rain";
+        else if (code >= 80 && code <= 82) icon = "wi-showers";
         else if (code >= 95) icon = "wi-thunderstorm";
         return `<i class="wi ${icon}"></i>`;
     }
 
-    function formatDate(date) {
-        const weeks = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        return `${date.getMonth() + 1}/${date.getDate()} (${weeks[date.getDay()]})`;
-    }
-
-    function updateTime() {
-        const now = new Date();
-        document.getElementById("clock").textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    }
-
     async function updateWeather() {
-        updateTime();
         try {
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&daily=sunrise,sunset,weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&current_weather=true&timezone=auto`;
             const res = await fetch(url);
             const data = await res.json();
             
             const now = new Date();
-            const tomorrow = new Date();
-            tomorrow.setDate(now.getDate() + 1);
+            const tomorrow = new Date(); tomorrow.setDate(now.getDate() + 1);
+            const weeks = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            document.getElementById("date-today").textContent = `${now.getMonth()+1}/${now.getDate()} (${weeks[now.getDay()]})`;
+            document.getElementById("date-tomorrow").textContent = `${tomorrow.getMonth()+1}/${tomorrow.getDate()} (${weeks[tomorrow.getDay()]})`;
 
-            document.getElementById("date-today").textContent = formatDate(now);
-            document.getElementById("date-tomorrow").textContent = formatDate(tomorrow);
+            dailySunData = data.daily.time.map((date, i) => {
+                const sr = new Date(data.daily.sunrise[i]);
+                const ss = new Date(data.daily.sunset[i]);
+                return { date, sunrise: sr.getHours()*60 + sr.getMinutes(), sunset: ss.getHours()*60 + ss.getMinutes() };
+            });
 
-            const sr = new Date(data.daily.sunrise[0]);
-            const ss = new Date(data.daily.sunset[0]);
-            sunData.sunrise = sr.getHours() * 60 + sr.getMinutes();
-            sunData.sunset = ss.getHours() * 60 + ss.getMinutes();
+            const currentHour = now.getHours();
+            const startHour = Math.floor(currentHour / 6) * 6;
+            const searchStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(startHour).padStart(2,'0')}:00`;
+            const startIdx = data.hourly.time.findIndex(t => t.startsWith(searchStr));
 
-            const h = now.getHours();
             document.getElementById("icon-now").innerHTML = getIconHTML(data.current_weather.weathercode, now);
             document.getElementById("temp-now").textContent = `${Math.round(data.current_weather.temperature)}°`;
-            document.getElementById("rain-now").textContent = data.hourly.precipitation_probability[h];
-            document.getElementById("humi-now").textContent = data.hourly.relative_humidity_2m[h];
+            document.getElementById("rain-now").textContent = data.hourly.precipitation_probability[startIdx + (currentHour - startHour)];
+            document.getElementById("humi-now").textContent = data.hourly.relative_humidity_2m[startIdx + (currentHour - startHour)];
 
-            // 明日サマリー
-            document.getElementById("icon-tom").innerHTML = getIconHTML(data.daily.weathercode[1], tomorrow);
+            document.getElementById("icon-tom").innerHTML = getIconHTML(data.daily.weathercode[1], tomorrow, true);
             document.getElementById("temp-tom-max").textContent = `${Math.round(data.daily.temperature_2m_max[1])}°`;
             document.getElementById("temp-tom-min").textContent = `${Math.round(data.daily.temperature_2m_min[1])}°`;
             document.getElementById("rain-tom").textContent = data.daily.precipitation_probability_max[1];
             
-            const tomHumiArr = data.hourly.relative_humidity_2m.slice(24, 48);
-            document.getElementById("humi-tom").textContent = Math.max(...tomHumiArr);
+            const tomDateStr = data.daily.time[1];
+            const tomHumiList = data.hourly.time.map((t, i) => t.startsWith(tomDateStr) ? data.hourly.relative_humidity_2m[i] : null).filter(v => v !== null);
+            document.getElementById("humi-tom").textContent = tomHumiList.length ? Math.round(tomHumiList.reduce((a,b)=>a+b)/tomHumiList.length) : "--";
 
             let html = "";
-            for(let i=1; i<=24; i++) {
-                const idx = h + i;
+            for(let i = 0; i < 24; i++) {
+                const idx = startIdx + i;
                 if(!data.hourly.time[idx]) break;
-                const d = new Date(data.hourly.time[idx]);
-                html += `<tr><td>${d.getHours()}:00</td><td class="h-icon">${getIconHTML(data.hourly.weathercode[idx], d)}</td><td>${Math.round(data.hourly.temperature_2m[idx])}°</td><td>${data.hourly.precipitation_probability[idx]}%</td><td>${data.hourly.relative_humidity_2m[idx]}%</td></tr>`;
+                const d_forecast = new Date(data.hourly.time[idx]);
+                const h = d_forecast.getHours();
+                const isParent = (h % 6 === 0);
+
+                if (isParent) {
+                    html += `<tr class="parent-row" onclick="toggleAccordion(${idx})">
+                        <td class="time-data">${h}:00</td>
+                        <td><span class="h-icon">${getIconHTML(data.hourly.weathercode[idx], d_forecast)}</span></td>
+                        <td>${Math.round(data.hourly.temperature_2m[idx])}°</td>
+                        <td>${data.hourly.precipitation_probability[idx]}%</td>
+                        <td>${data.hourly.relative_humidity_2m[idx]}%</td>
+                        <td id="btn-${idx}" class="toggle-icon">＋</td>
+                    </tr>`;
+                } else {
+                    const parentIdx = idx - (h % 6);
+                    html += `<tr class="child-row child-of-${parentIdx}">
+                        <td class="time-data">${h}:00</td>
+                        <td><span class="h-icon">${getIconHTML(data.hourly.weathercode[idx], d_forecast)}</span></td>
+                        <td>${Math.round(data.hourly.temperature_2m[idx])}°</td>
+                        <td>${data.hourly.precipitation_probability[idx]}%</td>
+                        <td>${data.hourly.relative_humidity_2m[idx]}%</td>
+                        <td></td>
+                    </tr>`;
+                }
             }
             document.getElementById("forecast-body").innerHTML = html;
         } catch (e) { console.error(e); }
     }
 
+    function updateTime() {
+        const n = new Date();
+        document.getElementById("clock").textContent = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+    }
+
+    updateTime();
     updateWeather();
     setInterval(updateWeather, CONFIG.updateFreq);
     setInterval(updateTime, 1000);
