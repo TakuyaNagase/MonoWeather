@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Weather Board Pro - Realtime Clock</title>
+    <style>
+        :root {
+            --bg-color: #000;
+            --main-text: #fff;
+            --sub-text: #555;
+            --label-text: #888;
+            --dim-text: #aaa;
+            --border-color: #333;
+            --scroll-bar: #222;
+        }
+
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-color); color: var(--main-text); font-family: sans-serif; overflow: hidden; -webkit-user-select: none; user-select: none; }
+        #container { display: flex; width: 100%; height: 100%; cursor: pointer; position: relative; }
+        
+        #left { flex: 35; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); height: 100%; z-index: 2; background: var(--bg-color); }
+        #right { flex: 65; height: 100%; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll-bar) transparent; padding: 0 2vh; box-sizing: border-box; }
+        #right::-webkit-scrollbar { width: 4px; }
+        #right::-webkit-scrollbar-thumb { background: var(--scroll-bar); border-radius: 10px; }
+
+        @media (orientation: portrait) {
+            #left { flex: 100; border-right: none; }
+            #right { display: none; }
+            .section-label { font-size: 4.5vh !important; }
+            .clock-display { font-size: 10vh !important; }
+            .icon-display { font-size: 12vh !important; }
+            .temp-display { font-size: 14vh !important; }
+            .current-detail { font-size: 6vh !important; }
+            .num-val { width: 8vh !important; }
+        }
+
+        .weather-section { height: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
+        .section-label { font-size: 3.5vh; color: var(--sub-text); letter-spacing: 6px; font-weight: bold; margin-bottom: 1.5vh; }
+        .top-row { display: flex; align-items: center; justify-content: center; margin-bottom: 0.5vh; }
+        
+        /* 時計表示：秒まで出すか迷いましたが、デザイン重視で分までにしています */
+        .clock-display { font-size: 8.5vh; color: var(--dim-text); font-weight: 200; font-variant-numeric: tabular-nums; }
+        
+        .icon-display { font-size: 8.5vh; filter: grayscale(100%) brightness(200%); }
+        .bottom-row { display: flex; align-items: center; justify-content: center; }
+        .temp-display { font-size: 11vh; font-weight: bold; line-height: 1; margin-right: 3vw; }
+        .details-group { display: flex; flex-direction: column; justify-content: center; }
+        .current-detail { display: flex; align-items: baseline; font-size: 5.0vh; font-weight: bold; margin: 0.1vh 0; }
+        .detail-label { font-size: 1.8vh; color: var(--sub-text); width: 6vh; margin-right: 5px; font-weight: normal; }
+        .num-val { display: inline-block; width: 6.5vh; text-align: right; font-variant-numeric: tabular-nums; }
+        .unit { font-size: 2.5vh; margin-left: 2px; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead { position: sticky; top: 0; background: var(--bg-color); z-index: 3; }
+        th { color: var(--label-text); font-size: 2.8vh; border-bottom: 3px solid #444; height: 10vh; vertical-align: middle; }
+        td { text-align: center; border-bottom: 1px solid #222; font-size: 3.8vh; height: 12vh; }
+        .h-icon { font-size: 4.5vh; filter: grayscale(100%) brightness(200%); }
+
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
+        #modal { background: #111; padding: 30px; border: 1px solid #333; border-radius: 12px; width: 320px; }
+        #modal h2 { margin-top: 0; font-size: 18px; color: var(--label-text); text-align: center; letter-spacing: 2px; }
+        .input-group { margin: 20px 0; }
+        .input-group label { display: block; font-size: 12px; color: #666; margin-bottom: 8px; }
+        .input-group input { width: 100%; background: #222; border: 1px solid #444; color: #fff; padding: 12px; box-sizing: border-box; font-size: 16px; border-radius: 6px; outline: none; }
+        .btn-row { display: flex; flex-direction: column; gap: 10px; margin-top: 25px; }
+        .btn-main-row { display: flex; gap: 10px; }
+        button { flex: 1; padding: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .save-btn { background: #fff; color: #000; }
+        .cancel-btn { background: #333; color: #fff; }
+        .reset-btn { background: transparent; color: #666; border: 1px solid #333; font-size: 12px; margin-top: 10px; font-weight: normal; }
+        button:active { transform: scale(0.98); opacity: 0.8; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<div id="container">
+    <div id="left">
+        <section class="weather-section" style="border-bottom: 1px solid #222;">
+            <div class="section-label">NOW</div>
+            <div class="top-row">
+                <div id="clock" class="clock-display">00:00</div>
+                <div id="icon-now" class="icon-display" style="margin-left: 2vw;">--</div>
+            </div>
+            <div class="bottom-row">
+                <div id="temp-now" class="temp-display">--°</div>
+                <div class="details-group">
+                    <div class="current-detail"><span class="detail-label">RAIN</span><span id="rain-now" class="num-val">--</span><span class="unit">%</span></div>
+                    <div class="current-detail"><span class="detail-label">HUMI</span><span id="humi-now" class="num-val">--</span><span class="unit">%</span></div>
+                </div>
+            </div>
+        </section>
+        <section class="weather-section">
+            <div class="section-label">TOMORROW</div>
+            <div class="top-row"><div id="icon-tom" class="icon-display">--</div></div>
+            <div class="bottom-row">
+                <div id="temp-tom" class="temp-display">--°</div>
+                <div class="details-group">
+                    <div class="current-detail"><span class="detail-label">RAIN</span><span id="rain-tom" class="num-val">--</span><span class="unit">%</span></div>
+                    <div class="current-detail"><span class="detail-label">HUMI</span><span id="humi-tom" class="num-val">--</span><span class="unit">%</span></div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div id="right">
+        <table>
+            <thead><tr><th>TIME</th><th>SKY</th><th>TEMP</th><th>RAIN</th><th>HUMI</th></tr></thead>
+            <tbody id="forecast-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="overlay">
+    <div id="modal">
+        <h2>LOCATION SETTINGS</h2>
+        <div class="input-group">
+            <label>Latitude (緯度)</label>
+            <input type="number" id="lat-input" step="0.0001">
+        </div>
+        <div class="input-group">
+            <label>Longitude (経度)</label>
+            <input type="number" id="lon-input" step="0.0001">
+        </div>
+        <div class="btn-row">
+            <div class="btn-main-row">
+                <button class="cancel-btn" onclick="toggleSettings(false)">Cancel</button>
+                <button class="save-btn" onclick="saveSettings()">Save</button>
+            </div>
+            <button class="reset-btn" onclick="resetToDefault()">Reset to Default</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const DEFAULT_LOC = { lat: 35, lon: 135 };
+    let CONFIG = {
+        lat: parseFloat(localStorage.getItem('lat')) || DEFAULT_LOC.lat,
+        lon: parseFloat(localStorage.getItem('lon')) || DEFAULT_LOC.lon,
+        interval: 600000
+    };
+
+    let timer;
+    const container = document.getElementById('container');
+    const rightSide = document.getElementById('right');
+
+    const startPress = () => { timer = setTimeout(() => { toggleSettings(true); timer = null; }, 1000); };
+    const cancelPress = (e) => { 
+        if (timer) { 
+            clearTimeout(timer); timer = null; 
+            if (e.currentTarget === container && !rightSide.contains(e.target)) {
+                 if (e.type === 'mouseup' || e.type === 'touchend') toggleFullscreen(); 
+            }
+        } 
+    };
+
+    container.addEventListener('mousedown', startPress);
+    container.addEventListener('touchstart', startPress);
+    container.addEventListener('mouseup', cancelPress);
+    container.addEventListener('touchend', cancelPress);
+    container.addEventListener('mouseleave', () => { clearTimeout(timer); timer = null; });
+
+    function toggleFullscreen() {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        }
+    }
+
+    function toggleSettings(show) {
+        document.getElementById('overlay').style.display = show ? 'flex' : 'none';
+        if(show) {
+            document.getElementById('lat-input').value = CONFIG.lat;
+            document.getElementById('lon-input').value = CONFIG.lon;
+        }
+    }
+
+    function resetToDefault() {
+        document.getElementById('lat-input').value = DEFAULT_LOC.lat;
+        document.getElementById('lon-input').value = DEFAULT_LOC.lon;
+    }
+
+    function saveSettings() {
+        const newLat = parseFloat(document.getElementById('lat-input').value);
+        const newLon = parseFloat(document.getElementById('lon-input').value);
+        if (!isNaN(newLat) && !isNaN(newLon)) {
+            CONFIG.lat = newLat; CONFIG.lon = newLon;
+            localStorage.setItem('lat', newLat); localStorage.setItem('lon', newLon);
+            toggleSettings(false); updateWeather();
+        }
+    }
+
+    const icons = {
+        0: "☀️", 1: "☀️", 2: "☁️", 3: "☁️", 45: "🌫️", 48: "🌫️", 51: "🌦️", 53: "🌦️", 55: "🌦️",
+        61: "☔", 63: "☔", 65: "☔", 71: "❄️", 73: "❄️", 75: "❄️", 77: "❄️", 80: "🌧️", 81: "🌧️",
+        82: "🌧️", 85: "☃️", 86: "☃️", 95: "⚡", 96: "⚡", 99: "⚡"
+    };
+    const getIcon = (code) => icons[code] || "☁️";
+
+    // --- 時計のリアルタイム更新 ---
+    function updateTime() {
+        const now = new Date();
+        document.getElementById("clock").textContent = 
+            `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    async function updateWeather() {
+        // 時計を更新
+        updateTime();
+        const now = new Date();
+        const h = now.getHours();
+
+        try {
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&current_weather=true&timezone=auto`);
+            const data = await res.json();
+            const { current_weather: cur, hourly } = data;
+
+            document.getElementById("icon-now").textContent = getIcon(cur.weathercode);
+            document.getElementById("temp-now").textContent = `${Math.round(cur.temperature)}°`;
+            document.getElementById("rain-now").textContent = hourly.precipitation_probability[h];
+            document.getElementById("humi-now").textContent = hourly.relative_humidity_2m[h];
+
+            const tomIdx = (h + 24) % 168;
+            document.getElementById("icon-tom").textContent = getIcon(hourly.weathercode[tomIdx]);
+            document.getElementById("temp-tom").textContent = `${Math.round(hourly.temperature_2m[tomIdx])}°`;
+            document.getElementById("rain-tom").textContent = hourly.precipitation_probability[tomIdx];
+            document.getElementById("humi-tom").textContent = hourly.relative_humidity_2m[tomIdx];
+
+            document.getElementById("forecast-body").innerHTML = Array.from({length: 24}, (_, i) => {
+                const idx = h + i + 1;
+                return `<tr><td style="color:#999">${idx % 24}:00</td><td class="h-icon">${getIcon(hourly.weathercode[idx])}</td><td>${Math.round(hourly.temperature_2m[idx])}°</td><td>${hourly.precipitation_probability[idx]}%</td><td>${hourly.relative_humidity_2m[idx]}%</td></tr>`;
+            }).join('');
+        } catch (e) { console.error("Update failed", e); }
+    }
+
+    // 初回起動
+    updateWeather();
+    
+    // 天気更新 (10分ごと)
+    setInterval(updateWeather, CONFIG.interval);
+    
+    // 時計の更新 (1秒ごと)
+    setInterval(updateTime, 1000);
+</script>
+</body>
+</html>
