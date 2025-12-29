@@ -6,9 +6,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Weather Board Pro</title>
-    <link rel="apple-touch-icon" href="icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
     <style>
         :root {
@@ -32,7 +29,7 @@
         @media (orientation: portrait) {
             #left { flex: 100; border-right: none; }
             #right { display: none; }
-            .section-label { font-size: 4.5vh !important; }
+            .section-label { font-size: 5vh !important; } /* スマホ縦持ち時さらに大きく */
             .clock-display { font-size: 11vh !important; }
             .icon-display { font-size: 11vh !important; width: 12vh !important; }
             .temp-display { font-size: 15vh !important; }
@@ -40,7 +37,9 @@
         }
 
         .weather-section { height: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; padding: 2vh 0; box-sizing: border-box; }
-        .section-label { font-size: 3vh; color: var(--sub-text); letter-spacing: 0.5em; font-weight: bold; margin-bottom: 2vh; text-transform: uppercase; }
+        
+        /* 日付ラベルの強化 */
+        .section-label { font-size: 3.5vh; color: #fff; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 2vh; text-transform: uppercase; }
         
         .top-row { display: flex; align-items: center; justify-content: center; gap: 3vw; margin-bottom: 1vh; }
         .clock-display { font-size: 8.5vh; color: var(--dim-text); font-weight: 200; font-variant-numeric: tabular-nums; line-height: 1; }
@@ -50,6 +49,12 @@
 
         .bottom-row { display: flex; align-items: center; justify-content: center; gap: 4vw; }
         .temp-display { font-size: 11.5vh; font-weight: bold; line-height: 0.9; font-variant-numeric: tabular-nums; }
+        
+        /* 明日の最高・最低気温用（フォントサイズ・色を統一） */
+        .temp-stack { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+        .temp-max-min { font-size: 7.2vh; font-weight: bold; color: #fff; line-height: 1; font-variant-numeric: tabular-nums; }
+        .temp-divider { width: 100%; height: 1px; background: #444; margin: 4px 0; }
+
         .details-group { display: flex; flex-direction: column; justify-content: center; gap: 0.5vh; }
         .current-detail { display: flex; align-items: baseline; font-size: 4.8vh; font-weight: bold; }
         .detail-label { font-size: 1.6vh; color: var(--sub-text); width: 6vh; font-weight: normal; margin-right: 4px; }
@@ -80,7 +85,7 @@
 <div id="container">
     <div id="left">
         <section class="weather-section" style="border-bottom: 1px solid #1a1a1a;">
-            <div class="section-label">Now</div>
+            <div id="date-today" class="section-label">--/-- ---</div>
             <div class="top-row">
                 <div id="clock" class="clock-display">--:--</div>
                 <div id="icon-now" class="icon-display"></div>
@@ -94,10 +99,14 @@
             </div>
         </section>
         <section class="weather-section">
-            <div class="section-label">Tomorrow</div>
+            <div id="date-tomorrow" class="section-label">--/-- ---</div>
             <div class="top-row"><div id="icon-tom" class="icon-display"></div></div>
             <div class="bottom-row">
-                <div id="temp-tom" class="temp-display">--°</div>
+                <div class="temp-stack">
+                    <div id="temp-tom-max" class="temp-max-min">--°</div>
+                    <div class="temp-divider"></div>
+                    <div id="temp-tom-min" class="temp-max-min">--°</div>
+                </div>
                 <div class="details-group">
                     <div class="current-detail"><span class="detail-label">RAIN</span><span id="rain-tom" class="num-val">--</span><span class="unit">%</span></div>
                     <div class="current-detail"><span class="detail-label">HUMI</span><span id="humi-tom" class="num-val">--</span><span class="unit">%</span></div>
@@ -145,7 +154,6 @@
     const container = document.getElementById('container');
     const rightSide = document.getElementById('right');
 
-    // 長押し3秒に設定
     const handleStart = () => { pressTimer = setTimeout(() => { toggleSettings(true); pressTimer = null; }, 3000); };
     const handleEnd = (e) => { 
         if (pressTimer) { 
@@ -211,6 +219,11 @@
         return `<i class="wi ${icon}"></i>`;
     }
 
+    function formatDate(date) {
+        const weeks = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        return `${date.getMonth() + 1}/${date.getDate()} (${weeks[date.getDay()]})`;
+    }
+
     function updateTime() {
         const now = new Date();
         document.getElementById("clock").textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -219,31 +232,41 @@
     async function updateWeather() {
         updateTime();
         try {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&daily=sunrise,sunset&current_weather=true&timezone=auto`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&daily=sunrise,sunset,weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&current_weather=true&timezone=auto`;
             const res = await fetch(url);
             const data = await res.json();
+            
+            const now = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(now.getDate() + 1);
+
+            document.getElementById("date-today").textContent = formatDate(now);
+            document.getElementById("date-tomorrow").textContent = formatDate(tomorrow);
+
             const sr = new Date(data.daily.sunrise[0]);
             const ss = new Date(data.daily.sunset[0]);
             sunData.sunrise = sr.getHours() * 60 + sr.getMinutes();
             sunData.sunset = ss.getHours() * 60 + ss.getMinutes();
 
-            const now = new Date();
             const h = now.getHours();
-
             document.getElementById("icon-now").innerHTML = getIconHTML(data.current_weather.weathercode, now);
             document.getElementById("temp-now").textContent = `${Math.round(data.current_weather.temperature)}°`;
             document.getElementById("rain-now").textContent = data.hourly.precipitation_probability[h];
             document.getElementById("humi-now").textContent = data.hourly.relative_humidity_2m[h];
 
-            const tIdx = h + 24;
-            document.getElementById("icon-tom").innerHTML = getIconHTML(data.hourly.weathercode[tIdx], new Date(data.hourly.time[tIdx]));
-            document.getElementById("temp-tom").textContent = `${Math.round(data.hourly.temperature_2m[tIdx])}°`;
-            document.getElementById("rain-tom").textContent = data.hourly.precipitation_probability[tIdx];
-            document.getElementById("humi-tom").textContent = data.hourly.relative_humidity_2m[tIdx];
+            // 明日サマリー
+            document.getElementById("icon-tom").innerHTML = getIconHTML(data.daily.weathercode[1], tomorrow);
+            document.getElementById("temp-tom-max").textContent = `${Math.round(data.daily.temperature_2m_max[1])}°`;
+            document.getElementById("temp-tom-min").textContent = `${Math.round(data.daily.temperature_2m_min[1])}°`;
+            document.getElementById("rain-tom").textContent = data.daily.precipitation_probability_max[1];
+            
+            const tomHumiArr = data.hourly.relative_humidity_2m.slice(24, 48);
+            document.getElementById("humi-tom").textContent = Math.max(...tomHumiArr);
 
             let html = "";
             for(let i=1; i<=24; i++) {
                 const idx = h + i;
+                if(!data.hourly.time[idx]) break;
                 const d = new Date(data.hourly.time[idx]);
                 html += `<tr><td>${d.getHours()}:00</td><td class="h-icon">${getIconHTML(data.hourly.weathercode[idx], d)}</td><td>${Math.round(data.hourly.temperature_2m[idx])}°</td><td>${data.hourly.precipitation_probability[idx]}%</td><td>${data.hourly.relative_humidity_2m[idx]}%</td></tr>`;
             }
