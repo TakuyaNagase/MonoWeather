@@ -219,7 +219,7 @@
     async function updateWeather() {
         updateTime();
         try {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&daily=sunrise,sunset&current_weather=true&timezone=auto`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&daily=sunrise,sunset&current_weather=true&timezone=auto&models=jma_seamless`;
             const res = await fetch(url);
             const data = await res.json();
             const sr = new Date(data.daily.sunrise[0]);
