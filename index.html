@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Weather Board Pro - Balanced Layout</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
+    <style>
+        :root {
+            --bg-color: #000;
+            --main-text: #fff;
+            --sub-text: #777;
+            --label-text: #aaa;
+            --dim-text: #fff; 
+            --border-color: #333;
+            --parent-bg: #111;
+            --fixed-th-size: 16px;
+        }
+
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-color); color: var(--main-text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; -webkit-user-select: none; user-select: none; }
+        #container { display: flex; width: 100%; height: 100%; cursor: pointer; position: relative; }
+        
+        #left { flex: 40; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); height: 100%; z-index: 2; background: var(--bg-color); box-sizing: border-box; }
+        #right { flex: 60; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0; box-sizing: border-box; position: relative; }
+        #right::-webkit-scrollbar { width: 0; }
+
+        .weather-section { height: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; padding: 2vh 0; box-sizing: border-box; }
+        .section-label { font-size: 4vh; color: #fff; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 2vh; text-transform: uppercase; }
+        .top-row { display: flex; align-items: center; justify-content: center; gap: 3vw; margin-bottom: 1vh; }
+        .clock-display { font-size: 10vh; color: var(--dim-text); font-weight: 300; font-variant-numeric: tabular-nums; line-height: 1; }
+        .icon-display { font-size: 11vh; width: 15vh; height: 12vh; display: flex; align-items: center; justify-content: center; filter: brightness(1.6); }
+        .bottom-row { display: flex; align-items: center; justify-content: center; gap: 4vw; }
+        .temp-display { font-size: 13.5vh; font-weight: bold; line-height: 0.9; font-variant-numeric: tabular-nums; }
+        .temp-max-min { font-size: 8.5vh; font-weight: bold; color: #fff; line-height: 1; font-variant-numeric: tabular-nums; }
+        .temp-divider { width: 100%; height: 2px; background: #444; margin: 6px 0; }
+        .details-group { display: flex; flex-direction: column; justify-content: center; gap: 0.8vh; }
+        .current-detail { display: flex; align-items: baseline; font-size: 5.8vh; font-weight: bold; }
+        .detail-label { font-size: 2vh; color: var(--sub-text); width: 7vh; font-weight: bold; margin-right: 6px; }
+        .num-val { display: inline-block; width: 8.5vh; text-align: right; font-variant-numeric: tabular-nums; }
+        .unit { font-size: 2.8vh; color: var(--label-text); margin-left: 2px; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead { position: sticky; top: 0; background: var(--bg-color); z-index: 10; }
+        th { color: var(--label-text); border-bottom: 2px solid #333; font-weight: bold; text-align: center; font-size: var(--fixed-th-size) !important; letter-spacing: normal !important; }
+        th:nth-child(1) { width: 25%; } th:nth-child(2) { width: 18%; } th:nth-child(3) { width: 18%; }
+        th:nth-child(4) { width: 15%; } th:nth-child(5) { width: 15%; } th:nth-child(6) { width: 9%; }
+        
+        td { text-align: center; vertical-align: middle; font-variant-numeric: tabular-nums; border-bottom: 1px solid #1a1a1a; padding: 0; }
+        .parent-row { background: var(--parent-bg); border-bottom: 2px solid #333; cursor: pointer; }
+        .parent-row td { font-weight: 800; }
+        .time-data { text-align: right !important; padding-right: 1em !important; }
+        .child-row { display: none; background: #000; }
+        .child-row td { color: #999; } /* 文字色は前回同様少し落としています */
+        .child-row.show { display: table-row; }
+        .h-icon { filter: brightness(1.6); display: inline-block; vertical-align: middle; }
+        .toggle-icon { color: #444; font-family: monospace; }
+
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal { background: #111; padding: 30px; border: 1px solid #333; border-radius: 16px; width: 360px; box-sizing: border-box; display: none; }
+        .modal.active { display: block; }
+        .modal h2 { margin-top: 0; font-size: 14px; color: var(--label-text); text-align: center; letter-spacing: 3px; margin-bottom: 25px; font-weight: bold; text-transform: uppercase; }
+        .input-group { margin: 15px 0; }
+        .input-group label { display: block; font-size: 11px; color: #555; margin-bottom: 6px; font-weight: bold; }
+        .input-group input[type="number"] { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 12px; box-sizing: border-box; font-size: 16px; border-radius: 8px; outline: none; }
+        .range-wrap { display: flex; align-items: center; gap: 10px; }
+        .range-wrap input[type="range"] { flex: 1; accent-color: #fff; }
+        .range-wrap input[type="number"] { width: 60px; padding: 5px; text-align: center; }
+        .btn-row { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .btn-main-row { display: flex; gap: 10px; }
+        button { flex: 1; padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .save-btn { background: #fff; color: #000; }
+        .cancel-btn { background: #222; color: #fff; }
+        .reset-btn { background: transparent; color: #444; font-size: 11px; text-decoration: underline; margin-top: 5px; }
+        .nav-btn { background: #1a1a1a; color: #fff; text-align: left; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+
+        @media (orientation: portrait) { #left { flex: 100; border-right: none; } #right { display: none; } }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+<div id="container">
+    <div id="left">
+        <section class="weather-section" style="border-bottom: 1px solid #1a1a1a;">
+            <div id="date-today" class="section-label">--/-- ---</div>
+            <div class="top-row"><div id="clock" class="clock-display">--:--</div><div id="icon-now" class="icon-display"></div></div>
+            <div class="bottom-row">
+                <div id="temp-now" class="temp-display">--°</div>
+                <div class="details-group">
+                    <div class="current-detail"><span class="detail-label">RAIN</span><span id="rain-now" class="num-val">--</span><span class="unit">%</span></div>
+                    <div class="current-detail"><span class="detail-label">HUMI</span><span id="humi-now" class="num-val">--</span><span class="unit">%</span></div>
+                </div>
+            </div>
+        </section>
+        <section class="weather-section">
+            <div id="date-tomorrow" class="section-label">--/-- ---</div>
+            <div class="top-row"><div id="icon-tom" class="icon-display"></div></div>
+            <div class="bottom-row">
+                <div class="temp-stack"><div id="temp-tom-max" class="temp-max-min">--°</div><div class="temp-divider"></div><div id="temp-tom-min" class="temp-max-min">--°</div></div>
+                <div class="details-group">
+                    <div class="current-detail"><span class="detail-label">RAIN</span><span id="rain-tom" class="num-val">--</span><span class="unit">%</span></div>
+                    <div class="current-detail"><span class="detail-label">HUMI</span><span id="humi-tom" class="num-val">--</span><span class="unit">%</span></div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div id="right">
+        <table>
+            <thead><tr><th>TIME</th><th>SKY</th><th>TEMP</th><th>RAIN</th><th>HUMI</th><th></th></tr></thead>
+            <tbody id="forecast-body"></tbody>
+        </table>
+    </div>
+</div>
+<div id="overlay">
+    <div id="menu-main" class="modal">
+        <h2>SETTINGS</h2>
+        <div class="btn-row">
+            <button class="nav-btn" onclick="openSubMenu('location')">LOCATION <span>&gt;</span></button>
+            <button class="nav-btn" onclick="openSubMenu('layout')">LAYOUT <span>&gt;</span></button>
+            <button class="cancel-btn" style="margin-top:20px" onclick="closeAllSettings()">Close</button>
+        </div>
+    </div>
+    <div id="menu-location" class="modal">
+        <h2>LOCATION SETTINGS</h2>
+        <div class="input-group">
+            <label>Latitude</label><input type="number" id="lat-input" step="0.0001">
+        </div>
+        <div class="input-group">
+            <label>Longitude</label><input type="number" id="lon-input" step="0.0001">
+        </div>
+        <div class="btn-row">
+            <div class="btn-main-row"><button class="cancel-btn" onclick="openSubMenu('main')">Back</button><button class="save-btn" onclick="saveLocation()">Save</button></div>
+            <button class="reset-btn" onclick="resetLocation()">Reset to Default</button>
+        </div>
+    </div>
+    <div id="menu-layout" class="modal">
+        <h2>LAYOUT SETTINGS</h2>
+        <div class="input-group">
+            <label>Font Size Adjustment (px)</label>
+            <div class="range-wrap">
+                <input type="range" id="font-adj-range" min="-10" max="20" step="1">
+                <input type="number" id="font-adj-input">
+            </div>
+        </div>
+        <div class="input-group">
+            <label>Col Spacing Adjustment (px)</label>
+            <div class="range-wrap">
+                <input type="range" id="col-spacing-range" min="-5" max="15" step="0.5">
+                <input type="number" id="col-spacing-input">
+            </div>
+        </div>
+        <div class="btn-row">
+            <div class="btn-main-row"><button class="cancel-btn" onclick="openSubMenu('main')">Back</button><button class="save-btn" onclick="saveLayout()">Apply</button></div>
+            <button class="reset-btn" onclick="resetLayout()">Reset to Default</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const DEFAULT_LOC = { lat: 34.7567, lon: 135.486 };
+    const DEFAULT_LAYOUT = { fontAdj: 0, colSpacing: 0 };
+    let CONFIG = {
+        lat: parseFloat(localStorage.getItem('lat')) || DEFAULT_LOC.lat,
+        lon: parseFloat(localStorage.getItem('lon')) || DEFAULT_LOC.lon,
+        fontAdj: parseFloat(localStorage.getItem('fontAdj')) || DEFAULT_LAYOUT.fontAdj,
+        colSpacing: parseFloat(localStorage.getItem('colSpacing')) || DEFAULT_LAYOUT.colSpacing,
+        updateFreq: 600000
+    };
+    let dailySunData = []; let utcOffsetSeconds = 0; let pressTimer;
+
+    function adjustLayout() {
+        const rightArea = document.getElementById('right');
+        const containerWidth = rightArea.clientWidth;
+        const containerHeight = rightArea.clientHeight;
+        if (containerWidth === 0) return;
+
+        const baseFontSize = Math.floor(containerWidth / 22) + CONFIG.fontAdj;
+        const childFontSize = Math.max(10, Math.floor(baseFontSize * 0.85)); // 子行のサイズを0.85倍に
+        const table = rightArea.querySelector('table');
+        
+        table.style.letterSpacing = `${CONFIG.colSpacing}px`;
+
+        const thHeight = table.querySelector('th').offsetHeight || 30;
+        const parentRowH = Math.floor((containerHeight - thHeight) / 4);
+
+        table.querySelectorAll('.parent-row td').forEach(td => {
+            td.style.height = `${parentRowH}px`;
+            td.style.fontSize = `${baseFontSize}px`;
+        });
+        
+        table.querySelectorAll('.child-row td').forEach(td => {
+            td.style.height = `${baseFontSize * 1.6}px`; // 行間も少し詰め気味に
+            td.style.fontSize = `${childFontSize}px`;
+        });
+        
+        table.querySelectorAll('.parent-row .h-icon').forEach(i => i.style.fontSize = `${baseFontSize * 1.5}px`);
+        table.querySelectorAll('.child-row .h-icon').forEach(i => i.style.fontSize = `${childFontSize * 1.4}px`);
+    }
+
+    window.addEventListener('resize', adjustLayout);
+    function setupSync(id) {
+        const range = document.getElementById(id + '-range');
+        const input = document.getElementById(id + '-input');
+        range.addEventListener('input', () => { input.value = range.value; });
+        input.addEventListener('input', () => { range.value = input.value; });
+    }
+    setupSync('font-adj'); setupSync('col-spacing');
+
+    function openSubMenu(menuId) {
+        document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        document.getElementById('overlay').style.display = 'flex';
+        document.getElementById(`menu-${menuId}`).classList.add('active');
+        if(menuId === 'location') {
+            document.getElementById('lat-input').value = CONFIG.lat;
+            document.getElementById('lon-input').value = CONFIG.lon;
+        } else if(menuId === 'layout') {
+            document.getElementById('font-adj-input').value = CONFIG.fontAdj;
+            document.getElementById('font-adj-range').value = CONFIG.fontAdj;
+            document.getElementById('col-spacing-input').value = CONFIG.colSpacing;
+            document.getElementById('col-spacing-range').value = CONFIG.colSpacing;
+        }
+    }
+    function closeAllSettings() { document.getElementById('overlay').style.display = 'none'; }
+    function saveLocation() {
+        CONFIG.lat = parseFloat(document.getElementById('lat-input').value);
+        CONFIG.lon = parseFloat(document.getElementById('lon-input').value);
+        localStorage.setItem('lat', CONFIG.lat); localStorage.setItem('lon', CONFIG.lon);
+        updateWeather(); openSubMenu('main');
+    }
+    function resetLocation() { document.getElementById('lat-input').value = DEFAULT_LOC.lat; document.getElementById('lon-input').value = DEFAULT_LOC.lon; }
+    function saveLayout() {
+        CONFIG.fontAdj = parseFloat(document.getElementById('font-adj-input').value) || 0;
+        CONFIG.colSpacing = parseFloat(document.getElementById('col-spacing-input').value) || 0;
+        localStorage.setItem('fontAdj', CONFIG.fontAdj); localStorage.setItem('colSpacing', CONFIG.colSpacing);
+        adjustLayout(); openSubMenu('main');
+    }
+    function resetLayout() {
+        document.getElementById('font-adj-input').value = DEFAULT_LAYOUT.fontAdj;
+        document.getElementById('font-adj-range').value = DEFAULT_LAYOUT.fontAdj;
+        document.getElementById('col-spacing-input').value = DEFAULT_LAYOUT.colSpacing;
+        document.getElementById('col-spacing-range').value = DEFAULT_LAYOUT.colSpacing;
+    }
+    function toggleAccordion(parentIdx) {
+        const children = document.querySelectorAll(`.child-of-${parentIdx}`);
+        const icon = document.getElementById(`btn-${parentIdx}`);
+        if (!children.length) return;
+        const isShowing = children[0].classList.contains('show');
+        children.forEach(c => c.classList.toggle('show'));
+        icon.textContent = isShowing ? '＋' : '－';
+    }
+
+    const cont = document.getElementById('container');
+    const handleStart = () => { pressTimer = setTimeout(() => { openSubMenu('main'); pressTimer = null; }, 3000); };
+    const handleEnd = (e) => { 
+        if (pressTimer) { 
+            clearTimeout(pressTimer); pressTimer = null; 
+            if (e.currentTarget === cont && !document.getElementById('right').contains(e.target)) {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+            }
+        } 
+    };
+    cont.addEventListener('mousedown', handleStart); cont.addEventListener('touchstart', handleStart);
+    cont.addEventListener('mouseup', handleEnd); cont.addEventListener('touchend', handleEnd);
+
+    function getLocalTime() { return new Date(new Date().getTime() + (utcOffsetSeconds * 1000)); }
+    function isNight(date) {
+        const dateStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')}`;
+        const sun = dailySunData.find(s => s.date === dateStr);
+        if (!sun) return date.getUTCHours() < 6 || date.getUTCHours() > 18;
+        const mins = date.getUTCHours() * 60 + date.getUTCMinutes();
+        return (mins < (sun.sunrise - 30)) || (mins >= (sun.sunset + 30));
+    }
+    function getIconHTML(code, date, forceDay = false) {
+        const night = forceDay ? false : isNight(date);
+        let icon = "wi-cloudy";
+        if (code === 0) icon = night ? "wi-night-clear" : "wi-day-sunny";
+        else if (code === 1) icon = night ? "wi-night-alt-partly-cloudy" : "wi-day-sunny-overcast";
+        else if (code === 2) icon = night ? "wi-night-alt-cloudy" : "wi-day-cloudy";
+        else if (code >= 51 && code <= 65) icon = "wi-rain";
+        else if (code >= 71 && code <= 77) icon = "wi-snow";
+        else if (code >= 80 && code <= 82) icon = "wi-showers";
+        else if (code >= 95) icon = "wi-thunderstorm";
+        return `<i class="wi ${icon}"></i>`;
+    }
+
+    async function updateWeather() {
+        try {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,weathercode&daily=sunrise,sunset,weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&current_weather=true&timezone=auto`;
+            const res = await fetch(url);
+            const data = await res.json();
+            utcOffsetSeconds = data.utc_offset_seconds;
+            const nowLocal = getLocalTime();
+            const weeks = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            document.getElementById("date-today").textContent = `${nowLocal.getUTCMonth()+1}/${nowLocal.getUTCDate()} (${weeks[nowLocal.getUTCDay()]})`;
+            const tomLocal = new Date(nowLocal.getTime() + 86400000);
+            document.getElementById("date-tomorrow").textContent = `${tomLocal.getUTCMonth()+1}/${tomLocal.getUTCDate()} (${weeks[tomLocal.getUTCDay()]})`;
+            dailySunData = data.daily.time.map((date, i) => {
+                const sr = new Date(data.daily.sunrise[i]); const ss = new Date(data.daily.sunset[i]);
+                return { date, sunrise: sr.getUTCHours()*60 + sr.getUTCMinutes(), sunset: ss.getUTCHours()*60 + ss.getUTCMinutes() };
+            });
+            const currentIdx = data.hourly.time.indexOf(data.current_weather.time.substring(0, 13) + ":00");
+            if (currentIdx !== -1) {
+                document.getElementById("icon-now").innerHTML = getIconHTML(data.current_weather.weathercode, nowLocal);
+                document.getElementById("temp-now").textContent = `${Math.round(data.current_weather.temperature)}°`;
+                document.getElementById("rain-now").textContent = data.hourly.precipitation_probability[currentIdx];
+                document.getElementById("humi-now").textContent = data.hourly.relative_humidity_2m[currentIdx];
+            }
+            document.getElementById("icon-tom").innerHTML = getIconHTML(data.daily.weathercode[1], tomLocal, true);
+            document.getElementById("temp-tom-max").textContent = `${Math.round(data.daily.temperature_2m_max[1])}°`;
+            document.getElementById("temp-tom-min").textContent = `${Math.round(data.daily.temperature_2m_min[1])}°`;
+            document.getElementById("rain-tom").textContent = data.daily.precipitation_probability_max[1];
+            const startHour = Math.floor(nowLocal.getUTCHours() / 6) * 6;
+            let startIdx = data.hourly.time.indexOf(data.current_weather.time.substring(0, 11) + String(startHour).padStart(2, '0') + ":00");
+            if (startIdx === -1) startIdx = 0;
+            let html = "";
+            for(let i = 0; i < 24; i++) {
+                const idx = startIdx + i;
+                if(!data.hourly.time[idx]) break;
+                const h = parseInt(data.hourly.time[idx].split('T')[1].split(':')[0]);
+                const isParent = (h % 6 === 0);
+                html += `<tr class="${isParent ? 'parent-row' : 'child-row child-of-' + (idx-(h%6))}" ${isParent ? `onclick="toggleAccordion(${idx})"` : ''}>
+                    <td class="time-data">${h}:00</td>
+                    <td><span class="h-icon">${getIconHTML(data.hourly.weathercode[idx], new Date(data.hourly.time[idx]+":00Z"))}</span></td>
+                    <td>${Math.round(data.hourly.temperature_2m[idx])}°</td>
+                    <td>${data.hourly.precipitation_probability[idx]}%</td>
+                    <td>${data.hourly.relative_humidity_2m[idx]}%</td>
+                    <td id="btn-${idx}" class="toggle-icon">${isParent ? '＋' : ''}</td></tr>`;
+            }
+            document.getElementById("forecast-body").innerHTML = html;
+            setTimeout(adjustLayout, 50);
+        } catch (e) { console.error(e); }
+    }
+    function updateTime() {
+        const local = getLocalTime();
+        document.getElementById("clock").textContent = `${String(local.getUTCHours()).padStart(2,'0')}:${String(local.getUTCMinutes()).padStart(2,'0')}`;
+    }
+    updateWeather(); setInterval(updateWeather, CONFIG.updateFreq); setInterval(updateTime, 1000);
+</script>
+</body>
+</html>
